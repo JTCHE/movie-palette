@@ -13,4 +13,6 @@ A simple python implementation to generate a "barcode" or "palette" from any vid
 4. Admire the result in the ouput/ folder
 
 # Roadmap
-I'd love if the script could be used as a standalone script, without the need for an input/ directory, like `python make-palette.py -v VIDEO -w WIDTH -h HEIGHT ...`
+- I'd love if the script could be used as a standalone script, without the need for an input/ directory, like `python make-palette.py -v VIDEO -w WIDTH -h HEIGHT ...`
+- Replace the current way of sizing images (by providing a width and an aspect ratio) with setting the width and height
+- Add a way to switch between an image mode (movie frames) and a swatch mode (solid colours). Currently, there are only solid colours.
