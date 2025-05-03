@@ -1,5 +1,5 @@
 /filter_graph
-/input
+input/
 /make-palette.bat
 /output
 /temp
