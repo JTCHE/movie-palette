@@ -103,7 +103,7 @@ def create_combined_image(
 
 def video_to_sequence(input_file_path, input_file_name, temp_dir):
     if not Path(input_file_path).is_file():
-        sys.exit("Input file is invalid")
+        quit("Input file is invalid")
     movie_frames_dir = temp_dir + "/movie_frames/"
     cleanup(movie_frames_dir)
     Path(movie_frames_dir).mkdir(exist_ok=True)
@@ -114,6 +114,7 @@ def video_to_sequence(input_file_path, input_file_name, temp_dir):
 
     start = time.time()
     # Use ffmpeg to extract frames as .jpeg images
+    print("Extracting frames...")
     (
         ffmpeg
         .input(input_file_path, threads=0)
@@ -123,24 +124,29 @@ def video_to_sequence(input_file_path, input_file_name, temp_dir):
             vf=f"fps={target_fps},scale=256:-1",
             vcodec="libwebp",
         )
+        .global_args('-v', 'error', '-stats')  # only show progress stats
         .run()
     )
 
     clear()
     print(f"Frame extraction took {time.time() - start:.2f}s")
-    input("Press Enter to continue...")
-    clear()
+    # input("Press Enter to continue...")
 
     return movie_frames_dir
 
 
+def check_if_output_already_exists(filename, output_dir="output/"):
+    output_file = Path(output_dir) / f"{filename}.png"
+    if output_file.exists():
+        print(f"Output file '{output_file}' already exists.")
+        overwrite = input("Do you want to overwrite it? (y/n): ").strip().lower()
+        if overwrite != 'y':
+            quit("Operation cancelled by the user.")
+
+
 def check_input_dir(input_files):
     if not input_files:
-        sys.exit("The input directory is empty")
-
-    if len(input_files) > 1:
-        input_mode = input("What mode do you want to run the script as ?[video/image]")
-        return input_mode
+        quit("The input directory is empty")
 
     first_file_path = str(input_files[0])
     mime_type, _ = mimetypes.guess_type(first_file_path)
@@ -150,7 +156,7 @@ def check_input_dir(input_files):
     elif mime_type and mime_type.startswith('image'):
         input_mode = 'image'
     else:
-        sys.exit("Unsupported file type")
+        quit("Unsupported file type")
 
     return input_mode
 
@@ -161,9 +167,10 @@ def pick_input_mode(input_dir, temp_dir, skip_movie_frame_generation=False):
     global filename
 
     if input_mode == 'video':
-        video_files = [file.name for file in input_files if mimetypes.guess_type(file).startswith('video')]
+        video_files = [file.name for file in input_files if mimetypes.guess_type(
+            file)[0] and mimetypes.guess_type(file)[0].startswith('video')]
         if not video_files:
-            sys.exit("No video files found in the directory.")
+            quit("No video files found in the directory.")
 
         if len(video_files) > 1:
             questions = [
@@ -182,6 +189,7 @@ def pick_input_mode(input_dir, temp_dir, skip_movie_frame_generation=False):
         filename = Path(input_file_name).stem
 
         if not skip_movie_frame_generation:
+            check_if_output_already_exists(filename)
             sequence_path = video_to_sequence(input_file_path, filename, temp_dir)
             input_path = Path(sequence_path)
         else:
@@ -189,6 +197,7 @@ def pick_input_mode(input_dir, temp_dir, skip_movie_frame_generation=False):
 
     elif input_mode == 'image':
         filename = input_files[0].stem
+        check_if_output_already_exists(filename)
         input_path = Path(input_dir)
 
     print(f"Processing {filename}")
@@ -220,7 +229,7 @@ def process_images(input_path, swatches_dir):
     return swatches_paths
 
 
-def paletify_main(target_width=8192, aspect_ratio=2.55, skip_movie_frame_generation=True, skip_swatch_generation=False):
+def paletify_main(target_width=8192, aspect_ratio=2.55, skip_movie_frame_generation=False, skip_swatch_generation=False):
     clear()
     """Process all images in the input directory."""
     temp_dir, output_dir, swatches_dir = ensure_directories()
