@@ -2,7 +2,6 @@
 import os
 import time
 import inquirer
-from send2trash import send2trash
 from wand.color import Color
 from wand.image import Image
 import ffmpeg
@@ -21,7 +20,12 @@ def clear():
 def cleanup(path):
     if Path(path).exists():
         path = path.replace("/", "\\")
-        send2trash(path)
+        for root, dirs, files in os.walk(path, topdown=False):
+            for name in files:
+                os.remove(os.path.join(root, name))
+            for name in dirs:
+                os.rmdir(os.path.join(root, name))
+        os.rmdir(path)
 
 
 def ensure_directories(temp_dir="temp", output_dir="output"):
