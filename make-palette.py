@@ -26,7 +26,6 @@ def format_eta(eta):  # Format ETA as h:mm:ss, m:ss, or s
         normalized_eta = f"{eta}s"
     return normalized_eta
 
-
 def resolution_presets(resolution):
     presets = {
         "HD": "1920x1080",
@@ -38,11 +37,25 @@ def resolution_presets(resolution):
         "8K": "7680x4320",
         "2.39": "4096x1716",
         "1.85": "4096x2214",
-        "A4": "3508x2480",   # 297x210mm at 300DPI, landscape
-        "A3": "4960x3508",   # 420x297mm at 300DPI, landscape
-        "A5": "2480x1748",   # 210x148mm at 300DPI, landscape
+        "A4": "3508x2480",
+        "A3": "4960x3508",
+        "A5": "2480x1748",
+        "ultrawide": "8976x3544",
     }
     return presets.get(resolution, resolution)
+
+
+def check_if_output_already_exists(output_file):
+    output_file = Path(output_file)
+    if output_file.exists():
+        print(f"Output file '{output_file}' already exists.")
+        overwrite = input("Do you want to overwrite it? (y/n): ").strip().lower()
+        if overwrite != 'y':
+            quit("Operation cancelled by the user.")
+
+def write_placeholder(output_path):
+    # Write a blank (black) image as a placeholder
+    cv2.imwrite(output_path, True)
 
 
 def time_to_frame(timestamp, fps):
@@ -64,15 +77,6 @@ def define_output_path(input_file, output_file, output_dir):
         output_file = str(output_dir / output_file)
 
     return output_file
-
-
-def check_if_output_already_exists(filename, output_dir="output/"):
-    output_file = Path(output_dir) / f"{filename}.png"
-    if output_file.exists():
-        print(f"Output file '{output_file}' already exists.")
-        overwrite = input("Do you want to overwrite it? (y/n): ").strip().lower()
-        if overwrite != 'y':
-            quit("Operation cancelled by the user.")
 
 
 def get_output_resolution(input_file, output_image_resolution):
@@ -114,8 +118,6 @@ def video_to_colors(input_file, output_file, output_image_resolution, sampling_r
 
     try:
         capture = cv2.VideoCapture(input_file)
-        # capture.set(cv2.CAP_PROP_FRAME_WIDTH, 320)
-        # capture.set(cv2.CAP_PROP_FRAME_WIDTH, 240)
 
         total_frames = int(capture.get(cv2.CAP_PROP_FRAME_COUNT))
         target_width = int(output_image_resolution.split("x")[0])
@@ -184,7 +186,7 @@ def process_video(input_file, output_file, sampling_rate, output_image_resolutio
 def make_palette_main():
     input_file = ''
     output_file = ''
-    output_dir = '/'
+    output_dir = './'
     output_image_resolution = ''
     sampling_rate = 10
     start_point = "00:00:00"
@@ -216,6 +218,9 @@ def make_palette_main():
 
         output_image_resolution = get_output_resolution(input_file, output_image_resolution)
         output_file = define_output_path(input_file, output_file, output_dir)
+
+        check_if_output_already_exists(output_file)
+        write_placeholder(output_file)
 
         process_video(input_file, output_file, sampling_rate, output_image_resolution, start_point, end_point)
 
