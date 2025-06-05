@@ -13,7 +13,7 @@ python make-palette.py -i inputfile.mp4 [-o outputfile.png] [-d output] [-r 1920
 ```
 
 - ```-i``` ```--input```: The path to the input video. The supported formats are written down below.
-- ```-o``` ```-output```: Optional. Output path of the final image including the filename and extension. If it's not specified, the output's filename will be the same as the input's.
+- ```-o``` ```--output```: Optional. Output path of the final image including the filename and extension. If it's not specified, the output's filename will be the same as the input's.
 - ```-d``` ```--directory```: Optional. Output directory of the final image. Can be used in conjonction or not with the ```-o``` flag.
 - ```-r``` ```--resolution```: Optional. The resolution of the output image. If it's not specified, it will be set to the input's resolution. Can be set to one of the preset value listed below. It should be formatted as ```1920x1080````
 - ```-a``` ```--sampling```: Optional. Default : 10. Arbitrary value for the sampling rate. Higher value means less frames will be sampled, and will result in bigger columns. The default will sample a lot of frames.
