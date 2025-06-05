@@ -8,7 +8,9 @@ A simple python implementation to generate a "barcode" or "palette" from any vid
 # Examples
 
 # Usage
-```python make-palette.py -i inputfile.mp4 [-o outputfile.png] [-d output] [-r 1920x1080] [-a 10] [-s 00:00:00] [-e 01:20:03]```
+```
+python make-palette.py -i inputfile.mp4 [-o outputfile.png] [-d output] [-r 1920x1080] [-a 10] [-s 00:00:00] [-e 01:20:03]
+```
 
 - ```-i``` ```--input```: The path to the input video. The supported formats are written down below.
 - ```-o``` ```-output```: Optional. Output path of the final image including the filename and extension. If it's not specified, the output's filename will be the same as the input's.
