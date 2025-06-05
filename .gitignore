@@ -1,6 +1,4 @@
-/filter_graph
-input/
-/make-palette.bat
-/output
-/temp
-.vscode
+!.py
+!.md
+*/
+.DS_Store
