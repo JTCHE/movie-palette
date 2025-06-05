@@ -1,138 +1,69 @@
 #!/usr/bin/env python3
+import getopt
 import os
-import time
-import inquirer
-from wand.color import Color
-from wand.image import Image
-import ffmpeg
 import sys
 from pathlib import Path
-import mimetypes
-mimetypes.add_type('image/webp', '.webp')
-global filename
-filename = ''
+import cv2
+import numpy
+import time
 
 
 def clear():
     os.system('cls' if os.name == 'nt' else 'clear')
 
 
-def cleanup(path):
-    if Path(path).exists():
-        path = path.replace("/", "\\")
-        for root, dirs, files in os.walk(path, topdown=False):
-            for name in files:
-                os.remove(os.path.join(root, name))
-            for name in dirs:
-                os.rmdir(os.path.join(root, name))
-        os.rmdir(path)
-
-
-def ensure_directories(temp_dir="temp", output_dir="output"):
-    """Create necessary directories if they don't exist."""
-    swatches_dir = temp_dir + "/swatches"
-
-    for directory in [temp_dir, output_dir, swatches_dir]:
-        Path(directory).mkdir(exist_ok=True)
-
-    return temp_dir, output_dir, swatches_dir
-
-
-def get_average_color(image_path):
-    """Extract the average color from an image."""
-    with Image(filename=image_path) as img:
-        # Resize to 1x1 to get average color
-        img.resize(1, 1)
-
-        # Get the color of the single pixel
-        pixel = img[0, 0]
-
-        # Format as hex color
-        color = f"#{pixel.red_int8:02x}{pixel.green_int8:02x}{pixel.blue_int8:02x}"
-
-    return color
-
-
-def create_swatch(swatch_color, filename, swatches_dir):
-    """Create a solid color swatch with the given color."""
-    swatch_path = Path(swatches_dir) / f"{filename}.png"
-
-    with Image(width=100, height=100, background=Color(swatch_color)) as img:
-        img.format = 'png'
-        img.save(filename=str(swatch_path))
-
-    return swatch_path
-
-
-def create_combined_image(
-    swatches_paths, output_dir, target_width, aspect_ratio
-):
-    """Create a combined image from all swatches using wand."""
-    global filename
-    if (filename != ''):
-        output_file_name = filename + ".png"
+def format_eta(eta):  # Format ETA as h:mm:ss, m:ss, or s
+    if eta >= 3600:
+        hours = eta // 3600
+        minutes = (eta % 3600) // 60
+        seconds = eta % 60
+        normalized_eta = f"{hours}h {minutes}m {seconds}s"
+    elif eta >= 60:
+        minutes = eta // 60
+        seconds = eta % 60
+        normalized_eta = f"{minutes}m {seconds}s"
     else:
-        output_file_name = "output.png"
-    output_file = Path(output_dir) / output_file_name
+        normalized_eta = f"{eta}s"
+    return normalized_eta
 
-    swatch_count = len(swatches_paths)
-    target_height = int(target_width//aspect_ratio)
-    swatch_width = int(target_width / swatch_count) + (target_width % swatch_count > 0)
 
-    print("Combining images into a single canvas...")
-    # Create a blank white canvas
-    with Image(width=target_width, height=target_height, background=Color("black")) as canvas:
-        position = 0
+def resolution_presets(resolution):
+    presets = {
+        "HD": "1920x1080",
+        "phone": "1080x1920",
+        "2K": "2560x1440",
+        "QHD": "2560x1440",
+        "4K": "3840x2160",
+        "UHD": "3840x2160",
+        "8K": "7680x4320",
+        "2.39": "4096x1716",
+        "1.85": "4096x2214",
+        "A4": "3508x2480",   # 297x210mm at 300DPI, landscape
+        "A3": "4960x3508",   # 420x297mm at 300DPI, landscape
+        "A5": "2480x1748",   # 210x148mm at 300DPI, landscape
+    }
+    return presets.get(resolution, resolution)
 
-        for index, swatch_path in enumerate(swatches_paths, start=1):
-            with Image(filename=str(swatch_path)) as swatch:
-                sys.stdout.write(f"\rCombining image [{index}/{swatch_count}]")
-                sys.stdout.flush()
-                swatch.resize(swatch_width, target_height)
-                # Composite resized swatch onto canvas
-                canvas.composite(swatch, left=position, top=0)
-                position += swatch_width
 
-        canvas.format = "png"
-        canvas.save(filename=str(output_file))
-        print()
-        print(f"Combined image created: {output_file}")
+def time_to_frame(timestamp, fps):
+    h, m, s = map(float, timestamp.split(":"))
+    return int((h * 3600 + m * 60 + s) * fps)
+
+
+def define_output_path(input_file, output_file, output_dir):
+    # Determine output filename
+    if not output_file and input_file:
+        output_file = Path(input_file).with_suffix('.png').name
+    elif output_file:
+        output_file = Path(output_file).name
+
+    # Add output directory if specified
+    if output_dir:
+        output_dir = Path(output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        output_file = str(output_dir / output_file)
 
     return output_file
-
-
-def video_to_sequence(input_file_path, input_file_name, temp_dir):
-    if not Path(input_file_path).is_file():
-        quit("Input file is invalid")
-    movie_frames_dir = temp_dir + "/movie_frames/"
-    cleanup(movie_frames_dir)
-    Path(movie_frames_dir).mkdir(exist_ok=True)
-
-    # target_swatches_per_second = input("Target swatches per second ?")
-    seconds_between_frames = 10
-    target_fps = 1 / seconds_between_frames
-
-    start = time.time()
-    # Use ffmpeg to extract frames as .jpeg images
-    print("Extracting frames...")
-    (
-        ffmpeg
-        .input(input_file_path, threads=0)
-        .output(
-            f"{movie_frames_dir}/{input_file_name}_%05d.webp",
-            q=3,
-            vf=f"fps={target_fps},scale=256:-1",
-            vcodec="libwebp",
-        )
-        .global_args('-v', 'error', '-stats')  # only show progress stats
-        .run()
-    )
-
-    clear()
-    print(f"Frame extraction took {time.time() - start:.2f}s")
-    # input("Press Enter to continue...")
-
-    return movie_frames_dir
 
 
 def check_if_output_already_exists(filename, output_dir="output/"):
@@ -144,110 +75,153 @@ def check_if_output_already_exists(filename, output_dir="output/"):
             quit("Operation cancelled by the user.")
 
 
-def check_input_dir(input_files):
-    if not input_files:
-        quit("The input directory is empty")
+def get_output_resolution(input_file, output_image_resolution):
+    capture = cv2.VideoCapture(input_file)
 
-    first_file_path = str(input_files[0])
-    mime_type, _ = mimetypes.guess_type(first_file_path)
+    # If no input image resolution is provided, set it to the input file's resolution
+    if output_image_resolution == '':
+        input_file_height = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        input_file_width = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH))
+        output_image_resolution = f"{input_file_width}x{input_file_height}"
 
-    if mime_type and mime_type.startswith('video'):
-        input_mode = 'video'
-    elif mime_type and mime_type.startswith('image'):
-        input_mode = 'image'
-    else:
-        quit("Unsupported file type")
-
-    return input_mode
+    capture.release()
+    return (output_image_resolution)
 
 
-def pick_input_mode(input_dir, temp_dir, skip_movie_frame_generation=False):
-    input_files = list(Path(input_dir).iterdir())
-    input_mode = check_input_dir(input_files)
-    global filename
+def assemble_colors(colors, output_path, output_image_resolution):
+    output_image_width = int(output_image_resolution.split("x")[0])
+    output_image_height = int(output_image_resolution.split("x")[1])
 
-    if input_mode == 'video':
-        video_files = [file.name for file in input_files if mimetypes.guess_type(
-            file)[0] and mimetypes.guess_type(file)[0].startswith('video')]
-        if not video_files:
-            quit("No video files found in the directory.")
+    # Create a barcode-like palette: each color is a vertical stripe
+    palette = numpy.zeros((output_image_height, output_image_width, 3), dtype=numpy.uint8)
+    num_colors = len(colors)
+    stripe_width = output_image_width // num_colors
 
-        if len(video_files) > 1:
-            questions = [
-                inquirer.List(
-                    'video_file',
-                    message="Select a video file to process:",
-                    choices=video_files,
-                )
-            ]
-            answers = inquirer.prompt(questions)
-            input_file_name = answers['video_file']
-        else:
-            input_file_name = video_files[0]
+    for i, color in enumerate(colors):
+        start_x = i * stripe_width
+        end_x = (i + 1) * stripe_width if i < num_colors - 1 else output_image_width
+        palette[:, start_x:end_x] = color
 
-        input_file_path = f"{input_dir}/{input_file_name}"
-        filename = Path(input_file_name).stem
-
-        if not skip_movie_frame_generation:
-            check_if_output_already_exists(filename)
-            sequence_path = video_to_sequence(input_file_path, filename, temp_dir)
-            input_path = Path(sequence_path)
-        else:
-            input_path = Path(temp_dir) / "movie_frames"
-
-    elif input_mode == 'image':
-        filename = input_files[0].stem
-        check_if_output_already_exists(filename)
-        input_path = Path(input_dir)
-
-    print(f"Processing {filename}")
-    return input_path
+    try:
+        cv2.imwrite(output_path, palette)
+        print(f"Successfully wrote {output_path}")
+    except cv2.error as e:
+        print(f"Encountered error when trying to write {output_path} : {e}")
 
 
-def process_images(input_path, swatches_dir):
-    swatches_paths = []
-    image_files = list(input_path.glob("*.*"))
-    total_images = len(image_files)
+def video_to_colors(input_file, output_file, output_image_resolution, sampling_rate, start_point, end_point):
+    clear()
 
-    print("Processing images...")
-    # Process each image
-    for index, image_file in enumerate(image_files, start=1):
-        if image_file.is_file():
-            sys.stdout.write(f"\rProcessing image [{index}/{total_images}]")
+    try:
+        capture = cv2.VideoCapture(input_file)
+        # capture.set(cv2.CAP_PROP_FRAME_WIDTH, 320)
+        # capture.set(cv2.CAP_PROP_FRAME_WIDTH, 240)
+
+        total_frames = int(capture.get(cv2.CAP_PROP_FRAME_COUNT))
+        target_width = int(output_image_resolution.split("x")[0])
+        nth_frame = max(1, int(total_frames/target_width*sampling_rate))
+        colors = []
+
+        fps = capture.get(cv2.CAP_PROP_FPS)
+        start_frame = time_to_frame(start_point, fps)
+        end_frame = int(capture.get(cv2.CAP_PROP_FRAME_COUNT)) if end_point == '' else time_to_frame(end_point, fps)
+        # Figure out what frames to process, with in and out points
+        frames_to_process = list(range(start_frame, min(end_frame, total_frames), nth_frame))
+        total_samples = len(frames_to_process)
+
+        # Print header
+        print(f"INPUT FILE PATH : {input_file}")
+        print(f"OUTPUT FILE PATH : {output_file}")
+        print(f"OUTPUT IMAGE RESOLUTION : {output_image_resolution}")
+        print(f"SAMPLING 1 FRAME EVERY {nth_frame} FRAMES")
+        print("—" * 50)
+        print()
+        print("Processing frames...")
+        print()
+
+        start_time = time.time()
+
+        for index, frame_number in enumerate(frames_to_process):
+            capture.set(cv2.CAP_PROP_POS_FRAMES, frame_number)  # Skip to a frame we know we're going to sample
+            current_frame = int(capture.get(cv2.CAP_PROP_POS_FRAMES))
+            sucess, frame = capture.read()
+
+            if not sucess:
+                break
+
+            # Figure out the average color of the current frame
+            average_color = numpy.mean(frame, axis=(0, 1)).astype(numpy.uint8)
+            colors.append(average_color)  # Add the current color to the array
+
+            # ETA Calculation
+            elapsed_time = time.time() - start_time
+            frames_left = total_samples - (index + 1)
+            eta = format_eta(int((elapsed_time / (index + 1)) * frames_left) if index > 0 else 0)
+
+            # Progress percentage calculation
+            progress_percentage = ((index+1) / total_samples) * 100
+
+            # Progress display
+            sys.stdout.write(
+                f"\rProgress: {progress_percentage:.1f}% | Sampling 1 frame evey {nth_frame} frames | Current Frame: {current_frame}/{end_frame} | Frames processed: {index+1}/{total_samples} | ETA: {eta}"
+            )
             sys.stdout.flush()
 
-            filename = image_file.stem
-            image_file_path = str(image_file)
+        capture.release()
 
-            # Get average color
-            swatch_color = get_average_color(image_file_path)
+        print("\nFrame processing complete")
+    except cv2.error as error:
+        print(f"Encountered error when trying to process {input_file} : {error}")
 
-            # Create color swatch
-            swatch_path = create_swatch(swatch_color, filename, swatches_dir)
-            swatches_paths.append(swatch_path)
-    print()  # Move to the next line after processing
-    return swatches_paths
+    return colors
 
 
-def paletify_main(target_width=8192, aspect_ratio=2.55, skip_movie_frame_generation=False, skip_swatch_generation=False):
-    clear()
-    """Process all images in the input directory."""
-    temp_dir, output_dir, swatches_dir = ensure_directories()
-    input_dir = "input/"
+def process_video(input_file, output_file, sampling_rate, output_image_resolution, start_point, end_point):
+    colors = video_to_colors(input_file, output_file, output_image_resolution, sampling_rate, start_point, end_point)
+    assemble_colors(colors, output_file, output_image_resolution)
 
-    input_path = pick_input_mode(input_dir, temp_dir, skip_movie_frame_generation)
 
-    swatches_paths = process_images(input_path, swatches_dir)
+def make_palette_main():
+    input_file = ''
+    output_file = ''
+    output_dir = '/'
+    output_image_resolution = ''
+    sampling_rate = 10
+    start_point = "00:00:00"
+    end_point = ''
 
-    # Create combined image
-    combined_path = create_combined_image(
-        swatches_paths, output_dir, target_width, aspect_ratio
-    )
+    try:
+        # Get command line arguments, -i inputfile [-o outputfile.[png/jpg]] [-r resolution]
+        options, argvs = getopt.getopt(sys.argv[1:], "i:o:d:r:a:s:e:", [
+                                       "input=", "output=", "directory", "resolution=", "sampling=", "start=", "end="])
+        for opt, arg in options:
+            if opt in ("-i", "--input"):
+                input_file = arg
+            elif opt in ("-o", "--output"):
+                output_file = arg
+            elif opt in ("-d", "--directory"):
+                output_dir = arg
+            elif opt in ("-r", "--resolution"):
+                output_image_resolution = resolution_presets(arg)
+            elif opt in ("-a", "--sampling"):
+                sampling_rate = int(arg)
+            elif opt in ("-s", "--start"):
+                start_point = arg
+            elif opt in ("-e", "--end"):
+                end_point = arg
 
-    # cleanup(temp_dir)
+        # If no input file is provided, throw an error and exit
+        if not input_file:
+            raise getopt.GetoptError("Error : no input provided")
 
-    return combined_path
+        output_image_resolution = get_output_resolution(input_file, output_image_resolution)
+        output_file = define_output_path(input_file, output_file, output_dir)
+
+        process_video(input_file, output_file, sampling_rate, output_image_resolution, start_point, end_point)
+
+    except getopt.GetoptError:
+        print('python make-palette.py -i inputfile.mp4 [-o outputfile.png] [-r 1920x1080]')
 
 
 if __name__ == "__main__":
-    paletify_main()
+    make_palette_main()
