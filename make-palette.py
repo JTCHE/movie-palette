@@ -26,6 +26,7 @@ def format_eta(eta):  # Format ETA as h:mm:ss, m:ss, or s
         normalized_eta = f"{eta}s"
     return normalized_eta
 
+
 def resolution_presets(resolution):
     presets = {
         "HD": "1920x1080",
@@ -52,6 +53,7 @@ def check_if_output_already_exists(output_file):
         overwrite = input("Do you want to overwrite it? (y/n): ").strip().lower()
         if overwrite != 'y':
             quit("Operation cancelled by the user.")
+
 
 def write_placeholder(output_path):
     # Write a blank (black) image as a placeholder
@@ -99,22 +101,11 @@ def assemble_colors(colors, output_path, output_image_resolution):
     # Create a barcode-like palette: each color is a vertical stripe
     palette = numpy.zeros((output_image_height, output_image_width, 3), dtype=numpy.uint8)
     num_colors = len(colors)
-    
-    # Calculate base stripe width and remainder
-    base_stripe_width = output_image_width // num_colors
-    remainder = output_image_width % num_colors
-    
-    current_x = 0
-    
+
     for i, color in enumerate(colors):
-        # Distribute remainder pixels among the first 'remainder' stripes
-        stripe_width = base_stripe_width + (1 if i < remainder else 0)
-        
-        start_x = current_x
-        end_x = current_x + stripe_width
-        
+        start_x = int(i * output_image_width / num_colors)
+        end_x = int((i + 1) * output_image_width / num_colors)
         palette[:, start_x:end_x] = color
-        current_x = end_x
 
     try:
         cv2.imwrite(output_path, palette)
