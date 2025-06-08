@@ -32,16 +32,16 @@ python make-palette.py -i inputfile.mp4 [-o outputfile.png] [-d output] [-r 1920
 # List of preset resolutions
 | Preset Name | Resolution |
 | ----------- | ---------- |
-| ultrawide   | 8976x1417  |
-| HD          | 1920x1080  |
+| ultrawide   | 8976x3544  |
+| u           | 8976x3544  |
 | phone       | 1080x1920  |
+| HD          | 1920x1080  |
 | 2K          | 2560x1440  |
-| QHD         | 2560x1440  |
 | 4K          | 3840x2160  |
-| UHD         | 3840x2160  |
 | 8K          | 7680x4320  |
 | 2.39        | 4096x1716  |
 | 1.85        | 4096x2214  |
+| 16:9        | 1920x1080  |
 | A4          | 3508x2480  |
 | A3          | 4960x3508  |
 | A5          | 2480x1748  |
