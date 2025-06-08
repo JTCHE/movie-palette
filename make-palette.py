@@ -68,7 +68,7 @@ def time_to_frame(timestamp, fps):
 def define_output_path(input_file, output_file, output_dir):
     # Determine output filename
     if not output_file and input_file:
-        output_file = Path(input_file).with_suffix('.png').name
+        output_file = Path(input_file).with_suffix('.jpg').name
     elif output_file:
         output_file = Path(output_file).name
 
@@ -194,7 +194,7 @@ def make_palette_main():
     end_point = ''
 
     try:
-        # Get command line arguments, -i inputfile [-o outputfile.[png/jpg]] [-r resolution]
+        # Get command line arguments, -i inputfile [-o outputfile.[png/jpg]] [-r resolution] ...
         options, argvs = getopt.getopt(sys.argv[1:], "i:o:d:r:a:s:e:", [
                                        "input=", "output=", "directory", "resolution=", "sampling=", "start=", "end="])
         for opt, arg in options:
@@ -226,7 +226,7 @@ def make_palette_main():
         process_video(input_file, output_file, sampling_rate, output_image_resolution, start_point, end_point)
 
     except getopt.GetoptError:
-        print('python make-palette.py -i inputfile.mp4 [-o outputfile.png] [-r 1920x1080]')
+        print('python make-palette.py -i inputfile.mp4 [-o outputfile.jpg] [-r 1920x1080]')
 
 
 if __name__ == "__main__":
