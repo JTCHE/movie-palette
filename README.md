@@ -17,6 +17,7 @@ python make-palette.py -i inputfile.mp4 [-o outputfile.png] [-d output] [-r 1920
 - ```-d``` ```--directory```: Optional. Output directory of the final image. Can be used in conjonction or not with the ```-o``` flag. The script Will create the directory automatically.
 - ```-r``` ```--resolution```: Optional. The resolution of the output image. If it's not specified, it will be set to the input's resolution. Can be set to one of the preset value listed below. It should be formatted as ```1920x1080````
 - ```-a``` ```--sampling```: Optional. Default : 10. Arbitrary value for the sampling rate. Higher value means less frames will be sampled, and will result in bigger columns. The default will sample a lot of frames.
+- ```-c``` ```--center```: Optional. Allows to set the center percentage value. If it's set to ```90``` (meaning 90%), the script will discard 5% of the start, and 5% of the end. This is useful to crop start and end credits. Will be overriden by ```s``` and ```e```
 - ```-s``` ```--start```: Optional. Allows to set the start timecode. Should be formatted as ```hh:mm:ss```.
 - ```-e``` ```--end```: Optional. Allows to set the end timecode, to skip credits for instance. Should be formatted as ```hh:mm:ss```.
 
