@@ -117,7 +117,26 @@ def write_output_file(palette, output_path):
         print(f"Encountered error when trying to write {output_path} : {e}")
 
 
-def video_to_colors(input_file, output_file, output_image_resolution, sampling_rate, start_point, end_point):
+def resolve_timing_parameters(start_point, end_point, center_percentage, total_frames):
+    if start_point != "00:00:00" or end_point != '':
+        return time_to_frame(start_point), time_to_frame(end_point)
+    if center_percentage is not None:
+        if not (0 < center_percentage <= 100):  # Check that output percentage is between 0 and 100
+            raise ValueError("Center percentage must be between 1 and 100")
+        exclude_percentage = int((100 - center_percentage) / 2)
+        exclude_frames = int((exclude_percentage / 100) * total_frames)
+
+        start_frame = exclude_frames
+        end_frame = total_frames - exclude_frames
+
+        return start_frame, end_frame
+
+    # if none of the parameters are specified, process entire video
+    return 0, total_frames
+
+
+def video_to_colors(
+        input_file, output_file, output_image_resolution, sampling_rate, start_point, end_point, center_percentage):
     clear()
 
     try:
@@ -129,8 +148,9 @@ def video_to_colors(input_file, output_file, output_image_resolution, sampling_r
         colors = []
 
         fps = capture.get(cv2.CAP_PROP_FPS)
-        start_frame = time_to_frame(start_point, fps)
-        end_frame = int(capture.get(cv2.CAP_PROP_FRAME_COUNT)) if end_point == '' else time_to_frame(end_point, fps)
+        # start_frame = time_to_frame(start_point, fps)
+        # end_frame = int(capture.get(cv2.CAP_PROP_FRAME_COUNT)) if end_point == '' else time_to_frame(end_point, fps)
+        start_frame, end_frame = resolve_timing_parameters(start_point, end_point, center_percentage, total_frames)
         # Figure out what frames to process, with in and out points
         frames_to_process = list(range(start_frame, min(end_frame, total_frames), nth_frame))
         total_samples = len(frames_to_process)
@@ -182,8 +202,10 @@ def video_to_colors(input_file, output_file, output_image_resolution, sampling_r
     return colors
 
 
-def process_video(input_file, output_file, sampling_rate, output_image_resolution, start_point, end_point):
-    colors = video_to_colors(input_file, output_file, output_image_resolution, sampling_rate, start_point, end_point)
+def process_video(input_file, output_file, sampling_rate, output_image_resolution, start_point, end_point,
+                  center_percentage):
+    colors = video_to_colors(input_file, output_file, output_image_resolution,
+                             sampling_rate, start_point, end_point, center_percentage)
     palette = assemble_colors(colors, output_image_resolution)
     write_output_file(palette, output_file)
 
@@ -196,11 +218,14 @@ def make_palette_main():
     sampling_rate = 10
     start_point = "00:00:00"
     end_point = ''
+    center_percentage = None
 
     try:
         # Get command line arguments, -i inputfile [-o outputfile.[png/jpg]] [-r resolution] ...
-        options, argvs = getopt.getopt(sys.argv[1:], "i:o:d:r:a:s:e:", [
-                                       "input=", "output=", "directory", "resolution=", "sampling=", "start=", "end="])
+        options, argvs = getopt.getopt(
+            sys.argv[1:],
+            "i:o:d:r:a:s:e:c:",
+            ["input=", "output=", "directory", "resolution=", "sampling=", "start=", "end=", "center="])
         for opt, arg in options:
             if opt in ("-i", "--input"):
                 input_file = arg
@@ -216,6 +241,8 @@ def make_palette_main():
                 start_point = arg
             elif opt in ("-e", "--end"):
                 end_point = arg
+            elif opt in ("-c", "--center"):
+                center_percentage = int(arg)
 
         # If no input file is provided, throw an error and exit
         if not input_file:
@@ -227,7 +254,8 @@ def make_palette_main():
         check_if_output_already_exists(output_file)
         write_placeholder(output_file)
 
-        process_video(input_file, output_file, sampling_rate, output_image_resolution, start_point, end_point)
+        process_video(input_file, output_file, sampling_rate, output_image_resolution,
+                      start_point, end_point, center_percentage)
 
     except getopt.GetoptError:
         print('python make-palette.py -i inputfile.mp4 [-o outputfile.jpg] [-r 1920x1080]')
