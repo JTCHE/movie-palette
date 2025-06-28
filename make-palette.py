@@ -94,7 +94,7 @@ def get_output_resolution(input_file, output_image_resolution):
     return (output_image_resolution)
 
 
-def assemble_colors(colors, output_path, output_image_resolution):
+def assemble_colors(colors, output_image_resolution):
     output_image_width = int(output_image_resolution.split("x")[0])
     output_image_height = int(output_image_resolution.split("x")[1])
 
@@ -106,7 +106,10 @@ def assemble_colors(colors, output_path, output_image_resolution):
         start_x = int(i * output_image_width / num_colors)
         end_x = int((i + 1) * output_image_width / num_colors)
         palette[:, start_x:end_x] = color
+    return palette
 
+
+def write_output_file(palette, output_path):
     try:
         cv2.imwrite(output_path, palette)
         print(f"Successfully wrote {output_path}")
@@ -181,7 +184,8 @@ def video_to_colors(input_file, output_file, output_image_resolution, sampling_r
 
 def process_video(input_file, output_file, sampling_rate, output_image_resolution, start_point, end_point):
     colors = video_to_colors(input_file, output_file, output_image_resolution, sampling_rate, start_point, end_point)
-    assemble_colors(colors, output_file, output_image_resolution)
+    palette = assemble_colors(colors, output_image_resolution)
+    write_output_file(palette, output_file)
 
 
 def make_palette_main():
