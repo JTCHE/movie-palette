@@ -109,6 +109,12 @@ def define_output_path(input_file, output_file, output_dir):
 
     return output_file
 
+def write_output_file(palette, output_path):
+    try:
+        cv2.imwrite(output_path, palette)
+        print(f"Successfully wrote {output_path}")
+    except cv2.error as e:
+        print(f"Encountered error when trying to write {output_path} : {e}")
 
 def get_output_resolution(input_file, output_image_resolution):
     capture = cv2.VideoCapture(input_file)
@@ -136,14 +142,6 @@ def assemble_colors(colors, output_image_resolution):
         end_x = int((i + 1) * output_image_width / num_colors)
         palette[:, start_x:end_x] = color
     return palette
-
-
-def write_output_file(palette, output_path):
-    try:
-        cv2.imwrite(output_path, palette)
-        print(f"Successfully wrote {output_path}")
-    except cv2.error as e:
-        print(f"Encountered error when trying to write {output_path} : {e}")
 
 
 def resolve_timing_parameters(start_point, end_point, center_percentage, input_file):
