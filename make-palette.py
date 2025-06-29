@@ -85,7 +85,7 @@ def time_to_frame(timestamp, fps):
 
 def get_capture_length(capture):
     """
-    Input : 
+    Input :
         Open CV2 video capture
     Returns :
         The length of the capture as a timecode :
@@ -177,7 +177,7 @@ def resolve_timing_parameters(start_point, end_point, center_percentage, input_f
 
 
 def video_to_colors(
-        input_file, output_file, output_image_resolution, sampling_rate, start_frame, end_frame):
+        input_file, output_file, output_image_resolution, sampling_rate, start_frame, end_frame, exposure, saturation):
     clear()
 
     try:
@@ -215,7 +215,19 @@ def video_to_colors(
 
             # Figure out the average color of the current frame
             average_color = numpy.mean(frame, axis=(0, 1)).astype(numpy.uint8)
-            colors.append(average_color)  # Add the current color to the array
+
+            # Exposure boost
+            exposure_boost_factor = exposure/100
+            average_color = numpy.clip(average_color * exposure_boost_factor, 0, 255).astype(numpy.uint8)
+
+            # Saturation boost
+            saturation_boost_factor = saturation/100
+            gray = numpy.mean(average_color)  # Grayscale value
+            average_color = numpy.clip(gray + (average_color - gray)
+                                       * saturation_boost_factor, 0, 255).astype(numpy.uint8)
+
+            # Append the final color to the array
+            colors.append(average_color)
 
             # ETA Calculation
             elapsed_time = time.time() - start_time
@@ -227,7 +239,10 @@ def video_to_colors(
 
             # Progress display
             sys.stdout.write(
-                f"\rProgress: {progress_percentage:.1f}% | Sampling 1 frame evey {nth_frame} frames | Current Frame: {current_frame}/{end_frame} | Frames processed: {index+1}/{total_samples} | ETA: {eta}"
+                f"\rProgress: {
+                    progress_percentage: .1f} % | Sampling 1 frame evey {nth_frame}  frames | Current Frame: {
+                    current_frame} /{end_frame}  | Frames processed: {
+                    index + 1} /{total_samples}  | ETA: {eta} "
             )
             sys.stdout.flush()
 
@@ -240,9 +255,10 @@ def video_to_colors(
     return colors
 
 
-def process_video(input_file, output_file, sampling_rate, output_image_resolution, start_frame, end_frame):
+def process_video(
+        input_file, output_file, sampling_rate, output_image_resolution, start_frame, end_frame, exposure, saturation):
     colors = video_to_colors(input_file, output_file, output_image_resolution,
-                             sampling_rate, start_frame, end_frame)
+                             sampling_rate, start_frame, end_frame, exposure, saturation)
     palette = assemble_colors(colors, output_image_resolution)
     write_output_file(palette, output_file)
 
@@ -257,13 +273,16 @@ def make_palette_main():
     end_point = ''
     center_percentage = None
     overwrite = None
+    exposure = 100
+    saturation = 100
 
     try:
-        # Get command line arguments, -i inputfile [-o outputfile.[png/jpg]] [-r resolution] ...
+        # Use only single-letter short options, and use long options for "saturation" and "exposure"
         options, argvs = getopt.getopt(
             sys.argv[1:],
             "i:o:d:r:a:s:e:c:w:",
-            ["input=", "output=", "directory", "resolution=", "sampling=", "start=", "end=", "center=", "overwrite="])
+            ["input=", "output=", "directory=", "resolution=", "sampling=", "start=", "end=", "center=", "overwrite=",
+             "saturation=", "exposure="])
         for opt, arg in options:
             if opt in ("-i", "--input"):
                 input_file = arg
@@ -281,8 +300,12 @@ def make_palette_main():
                 end_point = arg
             elif opt in ("-c", "--center"):
                 center_percentage = int(arg)
-            elif opt in ("-w", "--overwrte"):
+            elif opt in ("-w", "--overwrite"):
                 overwrite = arg
+            elif opt == "--exposure":
+                exposure = int(arg)
+            elif opt == "--saturation":
+                saturation = int(arg)
 
         # If no input file is provided, throw an error and exit
         if not input_file:
@@ -300,10 +323,10 @@ def make_palette_main():
         start_frame, end_frame = resolve_timing_parameters(start_point, end_point, center_percentage, input_file)
 
         process_video(input_file, output_file, sampling_rate, output_image_resolution,
-                      start_frame, end_frame)
+                      start_frame, end_frame, exposure, saturation)
 
     except getopt.GetoptError:
-        print('python make-palette.py -i inputfile.mp4 [-o outputfile.jpg] [-r 1920x1080]')
+        print('python make-palette.py -i inputfile.mp4 [-o outputfile.jpg] [-r 1920x1080] [--saturation 120] [--exposure 110]')
 
 
 if __name__ == "__main__":
