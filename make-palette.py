@@ -47,13 +47,17 @@ def resolution_presets(resolution):
     return presets.get(resolution, resolution)
 
 
-def check_if_output_already_exists(output_file):
+def check_if_output_already_exists(output_file, overwrite):
     output_file = Path(output_file)
     if output_file.exists():
-        print(f"Output file '{output_file}' already exists.")
-        overwrite = input("Do you want to overwrite it? (y/n): ").strip().lower()
-        if overwrite != 'y':
+        if overwrite == 'true':
+            return
+        elif overwrite == 'false':
             quit("Operation cancelled by the user.")
+        elif overwrite is None:
+            response = input(f"Output file '{output_file}' already exists. Overwrite? (y/n): ").strip().lower()
+            if response != 'y':
+                quit("Operation cancelled by the user.")
 
 
 def check_if_input_exists(input_file):
@@ -109,12 +113,14 @@ def define_output_path(input_file, output_file, output_dir):
 
     return output_file
 
+
 def write_output_file(palette, output_path):
     try:
         cv2.imwrite(output_path, palette)
         print(f"Successfully wrote {output_path}")
     except cv2.error as e:
         print(f"Encountered error when trying to write {output_path} : {e}")
+
 
 def get_output_resolution(input_file, output_image_resolution):
     capture = cv2.VideoCapture(input_file)
@@ -250,13 +256,14 @@ def make_palette_main():
     start_point = "00:00:00"
     end_point = ''
     center_percentage = None
+    overwrite = None
 
     try:
         # Get command line arguments, -i inputfile [-o outputfile.[png/jpg]] [-r resolution] ...
         options, argvs = getopt.getopt(
             sys.argv[1:],
-            "i:o:d:r:a:s:e:c:",
-            ["input=", "output=", "directory", "resolution=", "sampling=", "start=", "end=", "center="])
+            "i:o:d:r:a:s:e:c:w:",
+            ["input=", "output=", "directory", "resolution=", "sampling=", "start=", "end=", "center=", "overwrite="])
         for opt, arg in options:
             if opt in ("-i", "--input"):
                 input_file = arg
@@ -274,6 +281,8 @@ def make_palette_main():
                 end_point = arg
             elif opt in ("-c", "--center"):
                 center_percentage = int(arg)
+            elif opt in ("-w", "--overwrte"):
+                overwrite = arg
 
         # If no input file is provided, throw an error and exit
         if not input_file:
@@ -285,7 +294,7 @@ def make_palette_main():
         output_image_resolution = get_output_resolution(input_file, output_image_resolution)
         output_file = define_output_path(input_file, output_file, output_dir)
 
-        check_if_output_already_exists(output_file)
+        check_if_output_already_exists(output_file, overwrite)
         write_placeholder(output_file)
 
         start_frame, end_frame = resolve_timing_parameters(start_point, end_point, center_percentage, input_file)
