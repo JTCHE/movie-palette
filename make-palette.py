@@ -135,6 +135,23 @@ def get_output_resolution(input_file, output_image_resolution):
     return (output_image_resolution)
 
 
+def get_average_frame_color(frame, exposure, saturation):
+    # Figure out the average color of the current frame
+    average_color = numpy.mean(frame, axis=(0, 1)).astype(numpy.uint8)
+
+    # Exposure boost
+    exposure_boost_factor = exposure/100
+    average_color = numpy.clip(average_color * exposure_boost_factor, 0, 255).astype(numpy.uint8)
+
+    # Saturation boost
+    saturation_boost_factor = saturation/100
+    gray = numpy.mean(average_color)  # Grayscale value
+    average_color = numpy.clip(gray + (average_color - gray)
+                               * saturation_boost_factor, 0, 255).astype(numpy.uint8)
+
+    return average_color
+
+
 def assemble_colors(colors, output_image_resolution):
     output_image_width = int(output_image_resolution.split("x")[0])
     output_image_height = int(output_image_resolution.split("x")[1])
@@ -213,18 +230,7 @@ def video_to_colors(
             if not sucess:
                 break
 
-            # Figure out the average color of the current frame
-            average_color = numpy.mean(frame, axis=(0, 1)).astype(numpy.uint8)
-
-            # Exposure boost
-            exposure_boost_factor = exposure/100
-            average_color = numpy.clip(average_color * exposure_boost_factor, 0, 255).astype(numpy.uint8)
-
-            # Saturation boost
-            saturation_boost_factor = saturation/100
-            gray = numpy.mean(average_color)  # Grayscale value
-            average_color = numpy.clip(gray + (average_color - gray)
-                                       * saturation_boost_factor, 0, 255).astype(numpy.uint8)
+            average_color = get_average_frame_color(frame, exposure, saturation)
 
             # Append the final color to the array
             colors.append(average_color)
@@ -326,7 +332,8 @@ def make_palette_main():
                       start_frame, end_frame, exposure, saturation)
 
     except getopt.GetoptError:
-        print('python make-palette.py -i inputfile.mp4 [-o outputfile.jpg] [-r 1920x1080] [--saturation 120] [--exposure 110]')
+        print(
+            'python make-palette.py -i inputfile.mp4 [-o outputfile.jpg] [-r 1920x1080] [--saturation 120] [--exposure 110]')
 
 
 if __name__ == "__main__":
